@@ -1,17 +1,23 @@
 <?php
 include "settings.php";
+include "classes.php";
 header('X-Robots-Tag: noindex');
 header('Content-Type: text/html; charset=UTF-8');
+$alerts = array();
 $database = new NRDatabase();
 
 $users = $database->getUsers();
 $runners = array();
-foreach ($users as $dbrow) {
-  $user = new Runner($dbrow);
-  if (!$user->isComplete())
-  {
-    $runners[] = $user;
+if (is_array($users)) {
+  foreach ($users as $dbrow) {
+    $user = new Runner($dbrow);
+    if (!$user->isComplete())
+    {
+      $runners[] = $user;
+    }
   }
+} else {
+  Util::alert('Fant ingen løpere!', 'Advarsel');
 }
 
 if(isset($_GET['op'])&&$_GET['op']=='update')
@@ -21,14 +27,13 @@ if(isset($_GET['op'])&&$_GET['op']=='update')
     if ($runner->isNewdata())
     {
       $runner->update();
-      echo "Oppdaterte noe!!!!<br>";
+      Util::alert("Oppdaterte noe!!!!");
     }
     if ($runner->isComplete())
     {
       unset($runners[$id]);
     }
   }
-
 }
 
 
@@ -48,7 +53,7 @@ if(isset($_GET['op'])&&$_GET['op']=='update')
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha256-KXn5puMvxCw+dAYznun+drMdG1IFl3agK0p/pqT9KAo= sha512-2e8qq0ETcfWRI4HJBzQiA3UoyFk6tbNyG+qSaIBZLyW9Xf3sWZHN/lxe9fTh1U45DpPf07yj94KsUHHWe4Yk1A==" crossorigin="anonymous"></script>
     <style>
-body { padding-top: 40px; }
+body { padding-top: 60px; }
 @media screen and (max-width: 768px) {
     body { padding-top: 0px; }
 }
@@ -78,6 +83,12 @@ body { padding-top: 40px; }
     </nav>
 
     <div class="container">
+
+      <?php if (!empty($alerts)) { ?>
+        <?php foreach ($alerts as $alert) { ?>
+          <div class="alert alert-warning" role="alert"><?= $alert ?></div>
+        <?php } ?>
+      <?php } ?>
 
       <div class="starter-template">
         <h1>Løperoppdatering</h1>
@@ -110,82 +121,3 @@ body { padding-top: 40px; }
 
   </body>
 </html>
-<?php
-
-class NRDatabase extends PDO
-{
-  const USERQ = "
-  select
-  p.id,
-  p.display_name as name,
-  p.user_email as email,
-  max(IF(pa.meta_key='wp-athletics_gender', pa.meta_value, null)) as gender,
-  max(IF(pa.meta_key='wp-athletics_dob', pa.meta_value, null)) as dob
-  from kai_users p
-  left join kai_usermeta as pa on p.id = pa.user_id
-  group by p.id
-  ";
-
-  public function __construct()
-  {
-    global $db;
-    parent::__construct(
-      "mysql:dbname={$db['database']};host={$db['host']}",
-      $db['user'],
-      $db['pass'],
-      array(PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8")
-    );
-  }
-
-  public function getUsers()
-  {
-    return $this->query(self::USERQ);
-  }
-}
-
-class Runner
-{
-  public $id;
-  public $name;
-  public $email;
-  public $gender;
-  public $dob;
-
-  public function __construct($dbrow)
-  {
-    $this->id = $dbrow['id'];
-    $this->name = $dbrow['name'];
-    $this->email = $dbrow['email'];
-    $this->gender = $dbrow['gender'];
-    $this->dob = $dbrow['dob'];
-  }
-
-  public function isComplete()
-  {
-    if ($this->dob != "01 jan 0001" && !empty($this->email))
-    {
-      return TRUE;
-    }
-    return FALSE;
-  }
-
-  public function isNewdata()
-  {
-    if (isset($_GET['runnermail'][$this->id]) && strlen(isset($_GET['runnermail'][$this->id])))
-    {
-      return TRUE;
-    }
-    if (isset($_GET['runnerdob'][$this->id]) && strlen(isset($_GET['runnerdob'][$this->id])) && $_GET['runnerdob'][$this->id] != "01 jan 0001")
-    {
-      return TRUE;
-    }
-    return FALSE;
-  }
-
-  public function update() {
-    $mail = isset($_GET['runnermail'][$this->id]) ? $_GET['runnermail'][$this->id] : '';
-    $dob = isset($_GET['runnerdob'][$this->id]) ? $_GET['runnerdob'][$this->id] : '01 jan 0001';
-    // @todo regexp check?
-    // @todo sql update or insert for each?
-  }
-}
