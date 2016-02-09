@@ -6,17 +6,8 @@ header('Content-Type: text/html; charset=UTF-8');
 $alerts = array();
 $database = new NRDatabase();
 
-$users = $database->getUsers();
-$runners = array();
-if (is_array($users)) {
-  foreach ($users as $dbrow) {
-    $user = new Runner($dbrow);
-    if (!$user->isComplete())
-    {
-      $runners[] = $user;
-    }
-  }
-} else {
+$runners = $database->getUsers();
+if (!count($runners)) {
   Util::alert('Fant ingen løpere!', 'Advarsel');
 }
 
@@ -27,7 +18,7 @@ if(isset($_GET['op'])&&$_GET['op']=='update')
     if ($runner->isNewdata())
     {
       $runner->update();
-      Util::alert("Oppdaterte noe!!!!");
+      Util::alert("{$runner->email} oppdatert");
     }
     if ($runner->isComplete())
     {
@@ -70,7 +61,7 @@ body { padding-top: 60px; }
             <span class="icon-bar"></span>
             <span class="icon-bar"></span>
           </button>
-          <a class="navbar-brand" href="http://matilda.fuzzy76.net/~fuzzy76/nr-reg/">NR Registrering</a>
+          <a class="navbar-brand" href="/">NR Registrering</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
           <ul class="nav navbar-nav">
@@ -96,7 +87,7 @@ body { padding-top: 60px; }
       </div>
 
       <form class="form-inline" method="get">
-        <input type="hidden" id="op" value="update">
+        <input type="hidden" name="op" value="update">
         <table class="table table-striped table-condensed">
           <tr>
             <th>Id</th>
